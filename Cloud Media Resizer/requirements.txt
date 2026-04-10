@@ -1,0 +1,3 @@
+Pillow>=12.2.0
+google-cloud-storage>=3.10.1
+functions-framework>=3.10.1

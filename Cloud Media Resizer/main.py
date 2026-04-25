@@ -7,6 +7,9 @@ import functions_framework
 #deploy function
 """gcloud functions deploy image_resizer --gen2 --runtime=python311 --region=us-west1 --source="Cloud Media Resizer" --entry-point=resize_image --trigger-event-filters="type=google.cloud.storage.object.v1.finalized" --trigger-event-filters="bucket=media_image_initial_bucket" --set-env-vars=RESIZED_BUCKET=media_image_resized_bucket --memory 512MB --timeout=240s --max-instances=10  """
 
+#run function with image
+#gsutil cp "C:\Users\Frank\Downloads\sample.png" gs://media_image_initial_bucket
+
 #IAM permissions
 #gsutil iam ch serviceAccount:service-10189932669@gcp-sa-eventarc.iam.gserviceaccount.com:objectViewer gs://media_image_initial_bucket
 #gsutil iam ch serviceAccount:service-10189932669@gcp-sa-eventarc.iam.gserviceaccount.com:objectAdmin gs://media_image_resized_bucket

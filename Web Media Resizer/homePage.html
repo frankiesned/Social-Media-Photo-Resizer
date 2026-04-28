@@ -1,52 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Home Page</title>
-  <link rel="stylesheet" href="homePage.css">
+    <meta charset="UTF-8">
+    <title>Image Resizer</title>
+    <link rel="stylesheet" href="homePage.css">
 </head>
 
 <body>
-  <h1 class="app-title">Social Media Image Resizer</h1>
 
-  <div class="image-preview">
-    <img id="previewImage" src="" alt="Uploaded Image" />
-  </div>
+    <h1 class="app-title">Social Media Image Resizer</h1>
 
-  <div class="container">
-    <div class="profile-section">
-      <div class="user-info">
-        <p class="user-name"></p>
-      </div>
+    <div class="image-preview">
+        <img id="previewImage" />
+    <button id="resizeBtn" class="tile main-buttons" disabled>
+        Resize Image
+    </button>
     </div>
 
-    <h3>Click Below To Upload Image :p</h3>
+    <div class="container">
+        <h3>Upload Image</h3>
 
-    <div class="main-buttons">
-      <label for="fileUpload" class="tile">Upload</label>
-
-      <input 
-        type="file" 
-        id="fileUpload" 
-        accept=".jpg, .jpeg, .png" 
-        style="display: none;"
-      />
+        <label for="fileUpload" class="tile">Upload</label>
+        <input type="file" id="fileUpload" accept=".jpg,.jpeg,.png" hidden>
     </div>
-  </div>
 
-  <script>
- const fileInput = document.getElementById("fileUpload");
-const previewImage = document.getElementById("previewImage");
+    <div id="results"></div>
+    <script>
+    const fileInput = document.getElementById("fileUpload");
+    const previewImage = document.getElementById("previewImage");
+    const resizeBtn = document.getElementById("resizeBtn");
 
-fileInput.addEventListener("change", function () {
-  const file = this.files[0];
+    let selectedFile = null;
 
-  if (file) {
-    const imageURL = URL.createObjectURL(file);
-    previewImage.src = imageURL;
-    previewImage.style.display = "block";
-  }
-});
-  </script>
+     // runs when user selects a file
+    fileInput.addEventListener("change", function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        selectedFile = file;
+
+        // preview
+        previewImage.src = URL.createObjectURL(file);
+        //allows image to be displayed after being uploaded
+        previewImage.style.display = "block";
+
+        // enable button for resizing
+        resizeBtn.disabled = false;
+    });
+    //runs when user clicks the resize button
+    resizeBtn.addEventListener("click", async function () {
+        if (!selectedFile) return;
+
+        // once pressed, disable button and change text to show processing
+        resizeBtn.disabled = true;
+        resizeBtn.innerText = "Processing...";
+        // sets up the given file for processing and sends it to the backend
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        //send to upload point of backend
+        const res = await fetch("http://localhost:5000/upload", {
+            method: "POST",
+            body: formData
+        });
+        //converts response to json and gets the file name
+        const data = await res.json();
+        //gets file name
+        const filename = data.filename;
+        //specifically has the website wait to allow time for the backend to do its processing and resizing.
+        setTimeout(async () => {
+            const res2 = await fetch(`http://localhost:5000/list?name=${filename}`);
+            //calls for list of files in output bucket
+            const data2 = await res2.json();
+            //displays the links to the resized images
+            showLinks(data2.files);
+
+            resizeBtn.innerText = "Resize Image";
+            resizeBtn.disabled = false;
+
+        }, 6000);
+    });
+
+
+
+    function showLinks(files) {
+        const baseURL = "https://storage.googleapis.com/media_image_resized_bucket/";
+        //displays the links to the resized images
+        const results = document.getElementById("results");
+        results.innerHTML = "<h2>Resized Images:</h2>";
+        //if no files, let user know no images were found
+        if (!files || files.length === 0) {
+            results.innerHTML += "<p>No images found.</p>";
+            return;
+        }
+        //loop through each file and make it a clickable link to the image in the output bucket
+        files.forEach(file => {
+            const link = document.createElement("a");
+            link.href = baseURL + file;
+            link.target = "_blank";
+            link.textContent = file;
+
+            const div = document.createElement("div");
+            div.appendChild(link);
+
+            results.appendChild(div);
+        });
+    }
+</script>
+
 </body>
+
 </html>

@@ -1,6 +1,8 @@
 import os
 import tempfile
 from PIL import Image
+from PIL import ImageOps
+from PIL import ImageFilter
 from google.cloud import storage
 import functions_framework
 
@@ -9,6 +11,7 @@ import functions_framework
 
 #run function with image
 #gsutil cp "C:\Users\Frank\Downloads\sample.png" gs://media_image_initial_bucket
+#gsutil cp "C:\Users\Frank\Downloads\nathan.jpg" gs://media_image_initial_bucket
 
 #IAM permissions
 #gsutil iam ch serviceAccount:service-10189932669@gcp-sa-eventarc.iam.gserviceaccount.com:objectViewer gs://media_image_initial_bucket
@@ -25,6 +28,37 @@ import functions_framework
 #instagram:   3:4 POST, PORTRAIT, REEL THUMBNAIL    REELS & STORY          SQUARE      LANDSCAPE
 IMAGE_SIZES = [         (1080, 1440),               (1080, 1920),        (1080,1080), (1080,566),   (1600,900),      (1200, 1200), (1280, 720), (720, 1280), (1200, 627), (720, 900)]
 
+#to make readability easier, we decided to seperate each function into their own functions.
+
+#Original idea, simple resize to specific aspect ratio
+def resize(image, target_w, target_h):
+    img = image.copy()
+    img.thumbnail((target_w, target_h), Image.Resampling.LANCZOS)
+    return img
+
+#Proposed idea, crop image to ratio, may loose some parts of the image, but useful if the center of the image is the main focus.
+def crop(image, target_w, target_h):
+    return ImageOps.fit(image, (target_w, target_h), method=Image.Resampling.LANCZOS, centering = (0.5,0.5))
+
+#New idea after second sprint, change ratio but fill outsides that don't fit with blur. Example, vertical post would have bars on the side to fit into a horizontal post.
+def fill(image, target_w, target_h):
+    background = ImageOps.fit(image, (target_w, target_h), method=Image.Resampling.LANCZOS)
+    background = background.filter(ImageFilter.GaussianBlur(int(min(target_w, target_h)/20)))
+    foreground = image.copy()
+    foreground.thumbnail((target_w, target_h), Image.Resampling.LANCZOS)
+    x = (target_w-foreground.width) // 2
+    y = (target_h-foreground.height) // 2
+    
+    background.paste(foreground, (x, y))
+    return background
+
+#uploads the image path to the output bucket. 
+def upload(image_final, bucket, path):
+    with tempfile.NamedTemporaryFile(suffix='.jpg') as temp_output:
+        image_final.save(temp_output.name, 'JPEG', quality=85, optimize=True)
+
+        blob = bucket.blob(path)
+        blob.upload_from_filename(temp_output.name, content_type='image/jpeg')
 
 storage_client = storage.Client()
 
@@ -45,11 +79,11 @@ def resize_image(cloud_event):
     initial_bucket = storage_client.bucket(bucket_name)
     initial_blob = initial_bucket.blob(file_name)
     
-    #we want to create a temp file to work with so we can perserve the original file
+    
     with tempfile.NamedTemporaryFile() as temp_file:
         initial_blob.download_to_filename(temp_file.name) 
         
-        #make image same format
+        #preseve RGB for pngs
         with Image.open(temp_file.name) as image:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
@@ -62,34 +96,30 @@ def resize_image(cloud_event):
                 return
             #set the bucket
             output_bucket = storage_client.bucket(output_name)
+            base_name = os.path.splitext(os.path.basename(file_name))[0]
+            
             
             #w is weight, h is height
             for w, h in IMAGE_SIZES:
-                org_ratio = image.width / image.height
-                cur_ratio = w/h
+    
+                #create each formatting option with images
+                resized = resize(image, w, h)
+                cropped = crop(image, w, h)
+                filled = fill(image,w, h)
                 
                 
-                #used to check if image ratio is too wide or too tall
-                if org_ratio > cur_ratio:
-                    width = w
-                    height = int(w/org_ratio)
-                else:
-                    width = int(h*org_ratio)
-                    height = h
-                    
-                resized = image.resize((width, height), Image.Resampling.LANCZOS)
+                #create the file name for each image
+                resize_path = f"{base_name}/{w}x{h}/fit.jpg"
+                crop_path = f"{base_name}/{w}x{h}/crop.jpg"
+                fill_path = f"{base_name}/{w}x{h}/fill.jpg"
                 
-                name = os.path.splitext(file_name)
-                new_name = f"{name[0]}_NEW_{w}x{h}{name[1]}"
+                #upload each specific file type to the bucket
+                upload(resized, output_bucket, resize_path)
+                upload(cropped, output_bucket, crop_path)
+                upload(filled, output_bucket, fill_path)
                 
-                with tempfile.NamedTemporaryFile(suffix='.jpg') as temp_output:
-                    resized.save(temp_output.name, 'JPEG', quality=80, optimize=True)
                 
-                    output_blob = output_bucket.blob(new_name)
-                    output_blob.upload_from_filename(temp_output.name, content_type = 'image/jpeg')
-                    
-                    print(f"Output created, resized image: {new_name} ({w}x{h})")
-            
+                
             print("success with:", file_name)
                 
         

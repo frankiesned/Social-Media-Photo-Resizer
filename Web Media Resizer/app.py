@@ -34,14 +34,28 @@ def list_files():
         return jsonify({"error": "missing filename"}), 400
     #extracts just the name, not the full file name
     base = filename.rsplit(".", 1)[0]
-    #chekcs through output bucket to see if the resized images are there, so the name + NEW
-    blobs = output_bucket.list_blobs(prefix=base + "_NEW_")
-    #if found, puts the files in a list
-    files = [blob.name for blob in blobs]
-    #returns files
+    #lists all of the images
+    blobs = output_bucket.list_blobs(prefix=f"{base}/")
+    result = {}
+    
+    for blob in blobs:
+        parts = blob.name.split("/")
+        if len(parts) != 3:
+            continue
+        
+        _, size, mode_file, = parts
+        mode = mode_file.split(".")[0]
+        
+        if size not in result:
+            result[size] = {}
+        
+        result[size][mode] = f"https://storage.googleapis.com/{output_bucket.name}/{blob.name}"
+        
     return jsonify({
-        "files": files
+        "image": base,
+        "formats":result
     }), 200
+   
 #starts the server and listens for requests
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

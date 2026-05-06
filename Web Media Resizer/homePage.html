@@ -73,7 +73,7 @@
             //calls for list of files in output bucket
             const data2 = await res2.json();
             //displays the links to the resized images
-            showLinks(data2.files);
+            showLinks(data2.formats);
 
             resizeBtn.innerText = "Resize Image";
             resizeBtn.disabled = false;
@@ -83,28 +83,35 @@
 
 
 
-    function showLinks(files) {
-        const baseURL = "https://storage.googleapis.com/media_image_resized_bucket/";
+    function showLinks(formats) {
+        //const baseURL = "https://storage.googleapis.com/media_image_resized_bucket/";
         //displays the links to the resized images
         const results = document.getElementById("results");
         results.innerHTML = "<h2>Resized Images:</h2>";
         //if no files, let user know no images were found
-        if (!files || files.length === 0) {
+        if (!formats || Object.keys(formats).length === 0) {
             results.innerHTML += "<p>No images found.</p>";
             return;
         }
         //loop through each file and make it a clickable link to the image in the output bucket
-        files.forEach(file => {
-            const link = document.createElement("a");
-            link.href = baseURL + file;
-            link.target = "_blank";
-            link.textContent = file;
+        for (const size in formats) {
+            const sizeDiv = document.createElement("div")
+            sizeDiv.innerHTML = `<h3>${size}</h3>`;
+            const modes = formats[size];
 
-            const div = document.createElement("div");
-            div.appendChild(link);
+            //loop through each file type, fill fit or crop
+            for (const mode in modes) {
+                const link = document.createElement("a");
+                link.href = modes[mode];
+                link.target = "_blank";
+                link.textContent = `${mode}`;
+                const wrapper = document.createElement("div");
+                wrapper.appendChild(link);
+                sizeDiv.appendChild(wrapper);
+            }
+            results.appendChild(sizeDiv);
+        }
 
-            results.appendChild(div);
-        });
     }
 </script>
 

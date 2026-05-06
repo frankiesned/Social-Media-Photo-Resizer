@@ -11,7 +11,7 @@ import functions_framework
 
 #run function with image
 #gsutil cp "C:\Users\Frank\Downloads\sample.png" gs://media_image_initial_bucket
-#gsutil cp "C:\Users\Frank\Downloads\nathan.jpg" gs://media_image_initial_bucket
+#gsutil cp ""C:\Users\Frank\Downloads\greed-apple-cat.png"" gs://media_image_initial_bucket
 
 #IAM permissions
 #gsutil iam ch serviceAccount:service-10189932669@gcp-sa-eventarc.iam.gserviceaccount.com:objectViewer gs://media_image_initial_bucket

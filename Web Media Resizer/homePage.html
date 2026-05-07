@@ -30,6 +30,42 @@
     const fileInput = document.getElementById("fileUpload");
     const previewImage = document.getElementById("previewImage");
     const resizeBtn = document.getElementById("resizeBtn");
+   const PLATFORM_MAP = {
+    "Facebook": [
+        { label: "Vertical Post", size: "1080x1440" },
+        { label: "Reels & Story", size: "1080x1920" },
+        { label: "Square", size: "1080x1080" },
+        { label: "Landscape", size: "1080x566" }
+    ],
+
+    "X / Twitter": [
+        { label: "Post", size: "1080x1080" },
+        { label: "Landscape Post", size: "1600x900" },
+        { label: "Landscape", size: "1280x720" },
+        { label: "Vertical", size: "720x1280" }
+    ],
+
+    "LinkedIn": [
+        { label: "Square", size: "1200x1200" },
+        { label: "Landscape", size: "1200x627" },
+        { label: "Vertical", size: "720x900" }
+    ],
+
+    "YouTube": [
+        { label: "Shorts Thumbnail", size: "1080x1920" }
+    ],
+
+    "TikTok": [
+        { label: "Thumbnail & Video", size: "1080x1920" }
+    ],
+
+    "Instagram": [
+        { label: "3:4 & Portrait & Reel Thumbnail", size: "1080x1440" },
+        { label: "Reels & Story", size: "1080x1920" },
+        { label: "Square", size: "1080x1080" },
+        { label: "Landscape", size: "1080x566" }
+    ]
+};
 
     let selectedFile = null;
 
@@ -78,10 +114,39 @@
             resizeBtn.innerText = "Resize Image";
             resizeBtn.disabled = false;
 
-        }, 6000);
+        }, 13000);
     });
+function groupByPlatform(formats) {
+    const grouped = {};
 
+    for (const size in formats) {
+        //formats the sizes to match frontend map
+        const key = size.replace("(", "").replace(")", "").replace(", ", "x");
+        //looks up the platform and label based on the size
+        const meta = SIZE_MAP[key];
+        //if no platform, continue
+        if (!meta) continue;
+        //Labels and platform are stored in map based on size
+        const { platform, label } = meta;
+        //groups sizes by platform
+        if (!grouped[platform]) {
+            grouped[platform] = [];
+        }
+        //outputs size label and type to platform group
+        grouped[platform].push({
+            size: key,
+            label,
+            modes: formats[size]
+        });
+    }
+    //returns final outputs
+    return grouped;
+}
 
+//its the same sizes but backend just returns them differently, so this just makes it so it matches the const map
+function normalizeSize(size) {
+    return size.replace(/[()]/g, "").replace(", ", "x");
+}
 
     function showLinks(formats) {
         //const baseURL = "https://storage.googleapis.com/media_image_resized_bucket/";
@@ -93,25 +158,73 @@
             results.innerHTML += "<p>No images found.</p>";
             return;
         }
-        //loop through each file and make it a clickable link to the image in the output bucket
-        for (const size in formats) {
-            const sizeDiv = document.createElement("div")
-            sizeDiv.innerHTML = `<h3>${size}</h3>`;
-            const modes = formats[size];
 
-            //loop through each file type, fill fit or crop
-            for (const mode in modes) {
-                const link = document.createElement("a");
-                link.href = modes[mode];
-                link.target = "_blank";
-                link.textContent = `${mode}`;
-                const wrapper = document.createElement("div");
-                wrapper.appendChild(link);
-                sizeDiv.appendChild(wrapper);
+       // normalize the formats to match the frontend map
+    const normalizedFormats = {};
+    for (const rawSize in formats) {
+        const cleanSize = normalizeSize(rawSize);
+        normalizedFormats[cleanSize] = formats[rawSize];
+    }
+
+    // groups formats by platform
+    for (const platform in PLATFORM_MAP) {
+        const section = document.createElement("div");
+        //platform
+        const title = document.createElement("h2");
+        title.textContent = platform;
+        section.appendChild(title);
+        //table for each platform with type, size, and links
+        const table = document.createElement("table");
+        table.border = "1";
+        table.style.borderCollapse = "collapse";
+        table.style.marginBottom = "20px";
+        //header titles for the tables
+        const header = document.createElement("tr");
+        header.innerHTML = `
+            <th>Type</th>
+            <th>Resolution</th>
+            <th>Links</th>
+        `;
+        table.appendChild(header);
+        //loops through each size and assigns them to correct platform with their types
+        PLATFORM_MAP[platform].forEach(item => {
+            const row = document.createElement("tr");
+
+            const typeCell = document.createElement("td");
+            typeCell.textContent = item.label;
+
+            const sizeCell = document.createElement("td");
+            sizeCell.textContent = item.size;
+
+            const linksCell = document.createElement("td");
+
+            const modes = normalizedFormats[item.size];
+            //adds the links for the sizes to their specific platforms
+            if (modes) {
+                for (const mode in modes) {
+                    const link = document.createElement("a");
+                    link.href = modes[mode];
+                    link.target = "_blank";
+                    link.textContent = mode;
+                    link.style.marginRight = "10px";
+
+                    linksCell.appendChild(link);
+                }
+            } else { // if no links exist, just display that they were not generated
+                linksCell.textContent = "Not Generated";
             }
-            results.appendChild(sizeDiv);
-        }
-
+            //Adds the type, size, and links to the row, then adds the row to the table
+            row.appendChild(typeCell);
+            row.appendChild(sizeCell);
+            row.appendChild(linksCell);
+            //adds the row to the table
+            table.appendChild(row);
+        });
+        //adds the table to the section, then adds the section to the 
+        section.appendChild(table);
+        results.appendChild(section);
+    
+    }
     }
 </script>
 

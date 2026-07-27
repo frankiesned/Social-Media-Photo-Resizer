@@ -1,2 +1,9 @@
 # Social-Media-Photo-Resizer
-an application that allows users to upload images that they would like to be resized or cropped in order to fit the format on multiple platforms, with options given to the user.
+An application that allows users to upload images that they would like to be resized or cropped in order to fit the format on multiple platforms, with options given to the user.
+
+Full details located in the **Cloud Project Design** file.
+
+## Group Members
+Frankie Snedecor
+
+Jonathan Qi
